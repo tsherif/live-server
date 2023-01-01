@@ -8,11 +8,10 @@ var fs = require('fs'),
 	url = require('url'),
 	http = require('http'),
 	send = require('send'),
-	open = require('opn'),
 	es = require("event-stream"),
 	os = require('os'),
 	chokidar = require('chokidar');
-require('colors');
+	require('colors');
 
 var INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
 
@@ -131,39 +130,14 @@ function entryPoint(staticHandler, file) {
  */
 LiveServer.start = function(options) {
 	options = options || {};
-	var host = options.host || '0.0.0.0';
-	var port = options.port !== undefined ? options.port : 8080; // 0 means random
-	var root = options.root || process.cwd();
-	var mount = options.mount || [];
-	var watchPaths = options.watch || [root];
+	const host = process.env.IP || '0.0.0.0';
+	const port = options.port !== undefined ? options.port : 8080; // 0 means random
+	const root = options.root || process.cwd();
+	const watchPaths = options.watch || [root];
 	LiveServer.logLevel = options.logLevel === undefined ? 2 : options.logLevel;
-	var openPath = (options.open === undefined || options.open === true) ?
-		"" : ((options.open === null || options.open === false) ? null : options.open);
-	if (options.noBrowser) openPath = null; // Backwards compatibility with 0.7.0
-	var file = options.file;
-	var staticServerHandler = staticServer(root);
-	var wait = options.wait === undefined ? 100 : options.wait;
-	var browser = options.browser || null;
-	var htpasswd = options.htpasswd || null;
-	var cors = options.cors || false;
-	var https = options.https || null;
-	var proxy = options.proxy || [];
-	var middleware = options.middleware || [];
-	var noCssInject = options.noCssInject;
-	var httpsModule = options.httpsModule;
-	var poll = options.poll || false;
-
-	if (httpsModule) {
-		try {
-			require.resolve(httpsModule);
-		} catch (e) {
-			console.error(("HTTPS module \"" + httpsModule + "\" you've provided was not found.").red);
-			console.error("Did you do", "\"npm install " + httpsModule + "\"?");
-			return;
-		}
-	} else {
-		httpsModule = "https";
-	}
+	const staticServerHandler = staticServer(root);
+	const wait = options.wait === undefined ? 100 : options.wait;
+	const poll = options.poll || false;
 
 	// Setup a web server
 	var app = connect();
@@ -177,69 +151,14 @@ LiveServer.start = function(options) {
 	} else if (LiveServer.logLevel > 2) {
 		app.use(logger('dev'));
 	}
-	if (options.spa) {
-		middleware.push("spa");
-	}
-	// Add middleware
-	middleware.map(function(mw) {
-		if (typeof mw === "string") {
-			var ext = path.extname(mw).toLocaleLowerCase();
-			if (ext !== ".js") {
-				mw = require(path.join(__dirname, "middleware", mw + ".js"));
-			} else {
-				mw = require(mw);
-			}
-		}
-		app.use(mw);
-	});
 
-	// Use http-auth if configured
-	if (htpasswd !== null) {
-		var auth = require('http-auth');
-		var basic = auth.basic({
-			realm: "Please authorize",
-			file: htpasswd
-		});
-		app.use(auth.connect(basic));
-	}
-	if (cors) {
-		app.use(require("cors")({
-			origin: true, // reflecting request origin
-			credentials: true // allowing requests with credentials
-		}));
-	}
-	mount.forEach(function(mountRule) {
-		var mountPath = path.resolve(process.cwd(), mountRule[1]);
-		if (!options.watch) // Auto add mount paths to wathing but only if exclusive path option is not given
-			watchPaths.push(mountPath);
-		app.use(mountRule[0], staticServer(mountPath));
-		if (LiveServer.logLevel >= 1)
-			console.log('Mapping %s to "%s"', mountRule[0], mountPath);
-	});
-	proxy.forEach(function(proxyRule) {
-		var proxyOpts = url.parse(proxyRule[1]);
-		proxyOpts.via = true;
-		proxyOpts.preserveHost = true;
-		app.use(proxyRule[0], require('proxy-middleware')(proxyOpts));
-		if (LiveServer.logLevel >= 1)
-			console.log('Mapping %s to "%s"', proxyRule[0], proxyRule[1]);
-	});
 	app.use(staticServerHandler) // Custom static server
-		.use(entryPoint(staticServerHandler, file))
+		.use(entryPoint(staticServerHandler))
 		.use(serveIndex(root, { icons: true }));
 
-	var server, protocol;
-	if (https !== null) {
-		var httpsConfig = https;
-		if (typeof https === "string") {
-			httpsConfig = require(path.resolve(process.cwd(), https));
-		}
-		server = require(httpsModule).createServer(httpsConfig, app);
-		protocol = "https";
-	} else {
-		server = http.createServer(app);
-		protocol = "http";
-	}
+
+	const server = http.createServer(app);
+	const protocol = "http";
 
 	// Handle server startup errors
 	server.addListener('error', function(e) {
@@ -299,15 +218,6 @@ LiveServer.start = function(options) {
 				console.log(("Serving \"%s\" at %s (%s)").green, root, openURL, serveURL);
 		}
 
-		// Launch browser
-		if (openPath !== null)
-			if (typeof openPath === "object") {
-				openPath.forEach(function(p) {
-					open(openURL + p, {app: browser});
-				});
-			} else {
-				open(openURL + openPath, {app: browser});
-			}
 	});
 
 	// Setup server to listen at port
@@ -360,15 +270,12 @@ LiveServer.start = function(options) {
 		ignoreInitial: true
 	});
 	function handleChange(changePath) {
-		var cssChange = path.extname(changePath) === ".css" && !noCssInject;
 		if (LiveServer.logLevel >= 1) {
-			if (cssChange)
-				console.log("CSS change detected".magenta, changePath);
-			else console.log("Change detected".cyan, changePath);
+			console.log("Change detected".cyan, changePath); 
 		}
 		clients.forEach(function(ws) {
 			if (ws)
-				ws.send(cssChange ? 'refreshcss' : 'reload');
+				ws.send('reload');
 		});
 	}
 	LiveServer.watcher
