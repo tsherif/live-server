@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-var fs = require('fs'),
+const fs = require('fs'),
 	connect = require('connect'),
 	serveIndex = require('serve-index'),
 	logger = require('morgan'),
@@ -13,9 +13,9 @@ var fs = require('fs'),
 	chokidar = require('chokidar');
 	require('colors');
 
-var INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
+const INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
 
-var LiveServer = {
+const LiveServer = {
 	server: null,
 	watcher: null,
 	logLevel: 2
@@ -31,7 +31,7 @@ function escape(html){
 
 // Based on connect.static(), but streamlined and with added code injecter
 function staticServer(root) {
-	var isFile = false;
+	let isFile = false;
 	try { // For supporting mounting files instead of just directories
 		isFile = fs.statSync(root).isFile();
 	} catch (e) {
@@ -39,26 +39,26 @@ function staticServer(root) {
 	}
 	return function(req, res, next) {
 		if (req.method !== "GET" && req.method !== "HEAD") return next();
-		var reqpath = isFile ? "" : url.parse(req.url).pathname;
-		var hasNoOrigin = !req.headers.origin;
-		var injectCandidates = [ new RegExp("</body>", "i"), new RegExp("</svg>"), new RegExp("</head>", "i")];
-		var injectTag = null;
+		const reqpath = isFile ? "" : url.parse(req.url).pathname;
+		const hasNoOrigin = !req.headers.origin;
+		const injectCandidates = [ new RegExp("</body>", "i"), new RegExp("</svg>"), new RegExp("</head>", "i")];
+		let injectTag = null;
 
 		function directory() {
-			var pathname = url.parse(req.originalUrl).pathname;
+			const pathname = url.parse(req.originalUrl).pathname;
 			res.statusCode = 301;
 			res.setHeader('Location', pathname + '/');
 			res.end('Redirecting to ' + escape(pathname) + '/');
 		}
 
 		function file(filepath /*, stat*/) {
-			var x = path.extname(filepath).toLocaleLowerCase(), match,
-					possibleExtensions = [ "", ".html", ".htm", ".xhtml", ".php", ".svg" ];
+			const x = path.extname(filepath).toLocaleLowerCase();
+			const possibleExtensions = [ "", ".html", ".htm", ".xhtml", ".php", ".svg" ];
 			if (hasNoOrigin && (possibleExtensions.indexOf(x) > -1)) {
 				// TODO: Sync file read here is not nice, but we need to determine if the html should be injected or not
-				var contents = fs.readFileSync(filepath, "utf8");
-				for (var i = 0; i < injectCandidates.length; ++i) {
-					match = injectCandidates[i].exec(contents);
+				const contents = fs.readFileSync(filepath, "utf8");
+				for (let i = 0; i < injectCandidates.length; ++i) {
+					const match = injectCandidates[i].exec(contents);
 					if (match) {
 						injectTag = match[0];
 						break;
@@ -79,9 +79,9 @@ function staticServer(root) {
 		function inject(stream) {
 			if (injectTag) {
 				// We need to modify the length given to browser
-				var len = INJECTED_CODE.length + res.getHeader('Content-Length');
+				const len = INJECTED_CODE.length + res.getHeader('Content-Length');
 				res.setHeader('Content-Length', len);
-				var originalPipe = stream.pipe;
+				const originalPipe = stream.pipe;
 				stream.pipe = function(resp) {
 					originalPipe.call(stream, es.replace(new RegExp(injectTag, "i"), INJECTED_CODE + injectTag)).pipe(resp);
 				};
@@ -136,11 +136,11 @@ LiveServer.start = function(options) {
 	const watchPaths = options.watch || [root];
 	LiveServer.logLevel = options.logLevel === undefined ? 2 : options.logLevel;
 	const staticServerHandler = staticServer(root);
-	const wait = options.wait === undefined ? 100 : options.wait;
+	const wait = 100;
 	const poll = options.poll || false;
 
 	// Setup a web server
-	var app = connect();
+	const app = connect();
 
 	// Add logger. Level 2 logs only errors
 	if (LiveServer.logLevel === 2) {
@@ -163,7 +163,7 @@ LiveServer.start = function(options) {
 	// Handle server startup errors
 	server.addListener('error', function(e) {
 		if (e.code === 'EADDRINUSE') {
-			var serveURL = protocol + '://' + host + ':' + port;
+			const serveURL = protocol + '://' + host + ':' + port;
 			console.log('%s is already in use. Trying another port.'.yellow, serveURL);
 			setTimeout(function() {
 				server.listen(0, host);
@@ -178,16 +178,16 @@ LiveServer.start = function(options) {
 	server.addListener('listening', function(/*e*/) {
 		LiveServer.server = server;
 
-		var address = server.address();
-		var serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
-		var openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
+		const address = server.address();
+		const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
+		const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
 
-		var serveURL = protocol + '://' + serveHost + ':' + address.port;
-		var openURL = protocol + '://' + openHost + ':' + address.port;
+		const serveURL = protocol + '://' + serveHost + ':' + address.port;
+		const openURL = protocol + '://' + openHost + ':' + address.port;
 
-		var serveURLs = [ serveURL ];
+		let serveURLs = [ serveURL ];
 		if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
-			var ifaces = os.networkInterfaces();
+			const ifaces = os.networkInterfaces();
 			serveURLs = Object.keys(ifaces)
 				.map(function(iface) {
 					return ifaces[iface];
@@ -224,17 +224,17 @@ LiveServer.start = function(options) {
 	server.listen(port, host);
 
 	// WebSocket
-	var clients = [];
+	let clients = [];
 	server.addListener('upgrade', function(request, socket, head) {
-		var ws = new WebSocket(request, socket, head);
+		const ws = new WebSocket(request, socket, head);
 		ws.onopen = function() { ws.send('connected'); };
 
 		if (wait > 0) {
 			(function() {
-				var wssend = ws.send;
-				var waitTimeout;
+				const wssend = ws.send;
+				let waitTimeout;
 				ws.send = function() {
-					var args = arguments;
+					const args = arguments;
 					if (waitTimeout) clearTimeout(waitTimeout);
 					waitTimeout = setTimeout(function(){
 						wssend.apply(ws, args);
@@ -252,7 +252,7 @@ LiveServer.start = function(options) {
 		clients.push(ws);
 	});
 
-	var ignored = [
+	let ignored = [
 		function(testPath) { // Always ignore dotfiles (important e.g. because editor hidden temp files)
 			return testPath !== "." && /(^[.#]|(?:__|~)$)/.test(path.basename(testPath));
 		}
@@ -296,11 +296,11 @@ LiveServer.start = function(options) {
 };
 
 LiveServer.shutdown = function() {
-	var watcher = LiveServer.watcher;
+	const watcher = LiveServer.watcher;
 	if (watcher) {
 		watcher.close();
 	}
-	var server = LiveServer.server;
+	const server = LiveServer.server;
 	if (server)
 		server.close();
 };
