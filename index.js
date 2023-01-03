@@ -10,6 +10,7 @@ const fs = require('fs'),
 	send = require('send'),
 	es = require("event-stream"),
 	os = require('os'),
+	mime = require('mime'),
 	chokidar = require('chokidar');
 	require('colors');
 
@@ -31,18 +32,13 @@ function escape(html){
 
 // Based on connect.static(), but streamlined and with added code injecter
 function staticServer(root) {
-	let isFile = false;
-	try { // For supporting mounting files instead of just directories
-		isFile = fs.statSync(root).isFile();
-	} catch (e) {
-		if (e.code !== "ENOENT") throw e;
-	}
 	return function(req, res, next) {
 		if (req.method !== "GET" && req.method !== "HEAD") return next();
-		const reqpath = isFile ? "" : url.parse(req.url).pathname;
-		const hasNoOrigin = !req.headers.origin;
-		const injectCandidates = [ new RegExp("</body>", "i"), new RegExp("</svg>"), new RegExp("</head>", "i")];
-		let injectTag = null;
+		const pathname = url.parse(req.url).pathname;
+		const reqpath = pathname === "/" ?  "index.html" : pathname;
+		const x = path.extname(reqpath).toLocaleLowerCase();
+		const possibleExtensions = [ ".html", ".htm", ".xhtml", ".php", ".svg" ];
+		const isHTML = possibleExtensions.indexOf(x) > -1
 
 		function directory() {
 			const pathname = url.parse(req.originalUrl).pathname;
@@ -51,49 +47,23 @@ function staticServer(root) {
 			res.end('Redirecting to ' + escape(pathname) + '/');
 		}
 
-		function file(filepath /*, stat*/) {
-			const x = path.extname(filepath).toLocaleLowerCase();
-			const possibleExtensions = [ "", ".html", ".htm", ".xhtml", ".php", ".svg" ];
-			if (hasNoOrigin && (possibleExtensions.indexOf(x) > -1)) {
-				// TODO: Sync file read here is not nice, but we need to determine if the html should be injected or not
-				const contents = fs.readFileSync(filepath, "utf8");
-				for (let i = 0; i < injectCandidates.length; ++i) {
-					const match = injectCandidates[i].exec(contents);
-					if (match) {
-						injectTag = match[0];
-						break;
-					}
-				}
-				if (injectTag === null && LiveServer.logLevel >= 3) {
-					console.warn("Failed to inject refresh script!".yellow,
-						"Couldn't find any of the tags ", injectCandidates, "from", filepath);
-				}
-			}
-		}
-
 		function error(err) {
 			if (err.status === 404) return next();
 			next(err);
 		}
 
-		function inject(stream) {
-			if (injectTag) {
-				// We need to modify the length given to browser
-				const len = INJECTED_CODE.length + res.getHeader('Content-Length');
-				res.setHeader('Content-Length', len);
-				const originalPipe = stream.pipe;
-				stream.pipe = function(resp) {
-					originalPipe.call(stream, es.replace(new RegExp(injectTag, "i"), INJECTED_CODE + injectTag)).pipe(resp);
-				};
-			}
-		}
-
-		send(req, reqpath, { root: root })
+		if (isHTML) {
+			const contents = fs.readFileSync(reqpath, "utf8");
+			const injected = contents.replace("</body>", INJECTED_CODE + "</body>");
+			const type = mime.getType(reqpath);
+			res.setHeader("Content-Type", type);
+			res.end(injected);
+		} else {
+			send(req, reqpath, { root: root })
 			.on('error', error)
 			.on('directory', directory)
-			.on('file', file)
-			.on('stream', inject)
 			.pipe(res);
+		}
 	};
 }
 
