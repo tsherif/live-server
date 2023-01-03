@@ -54,11 +54,13 @@ function staticServer(root) {
 			const injected = contents.replace("</body>", INJECTED_CODE + "</body>");
 			const type = mime.getType(reqpath);
 			res.setHeader("Content-Type", type);
+			res.setHeader("Cache-Control", "public, max-age=0");
+			res.setHeader("Accept-Ranges", "bytes");
 			res.end(injected);
 		} else {
 			send(req, reqpath, { root: root })
-			.on('error', error)
-			.on('directory', directory)
+			.on("error", error)
+			.on("directory", directory)
 			.pipe(res);
 		}
 	};
