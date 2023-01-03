@@ -33,34 +33,62 @@ function escape(html){
 function staticServer(root) {
 	return function(req, res, next) {
 		if (req.method !== "GET" && req.method !== "HEAD") return next();
-		const pathname = url.parse(req.url).pathname;
-		const reqpath = pathname === "/" ?  "index.html" : pathname;
+		let reqpath = url.parse(req.url).pathname;
+		console.log(reqpath);
+		try {
+			const stat = fs.statSync(`.${reqpath}`);
+			if (stat.isDirectory()) {
+				if (reqpath[reqpath.length - 1] === "/") {
+					try {
+						fs.statSync(`.${reqpath}/index.html`);
+						reqpath += "/index.html";
+					} catch (e) {
+						// No index.html
+					}
+				} else {
+					res.statusCode = 301;
+					res.setHeader('Location', reqpath + '/');
+					res.end('Redirecting to ' + escape(reqpath) + '/');
+					return;
+				}
+				
+			}
+		} catch (e) {
+			// No index.html
+		}
+		
 		const isHTML = mime.getType(reqpath) === "text/html";
 
-		function directory() {
-			const pathname = url.parse(req.originalUrl).pathname;
-			res.statusCode = 301;
-			res.setHeader('Location', pathname + '/');
-			res.end('Redirecting to ' + escape(pathname) + '/');
-		}
-
-		function error(err) {
-			if (err.status === 404) return next();
-			next(err);
-		}
-
 		if (isHTML) {
-			const contents = fs.readFileSync(reqpath, "utf8");
-			const injected = contents.replace("</body>", INJECTED_CODE + "</body>");
-			const type = mime.getType(reqpath);
-			res.setHeader("Content-Type", type);
-			res.setHeader("Cache-Control", "public, max-age=0");
-			res.setHeader("Accept-Ranges", "bytes");
-			res.end(injected);
+			try {
+				const contents = fs.readFileSync(`.${reqpath}`, "utf8");
+				res.setHeader("Content-Type", "text/html");
+				res.setHeader("Cache-Control", "public, max-age=0");
+				res.setHeader("Accept-Ranges", "bytes");
+				const match = /(<\/body>|<\/head>)/.exec(contents);
+				if (match) {
+					res.end(contents.replace(match[0], INJECTED_CODE + match[0]));
+				} else {
+					res.end(contents);
+				}
+			} catch (e) {
+				res.writeHead(404);
+				res.end("File " + reqpath + " not found.");
+			}
 		} else {
 			send(req, reqpath, { root: root })
-			.on("error", error)
-			.on("directory", directory)
+			.on("error", (err) => {
+				if (err.status === 404) {
+					return next();
+				}
+				next(err);
+			})
+			.on("directory", () => {
+				const pathname = url.parse(req.originalUrl).pathname;
+				res.statusCode = 301;
+				res.setHeader('Location', pathname + '/');
+				res.end('Redirecting to ' + escape(pathname) + '/');
+			})
 			.pipe(res);
 		}
 	};
