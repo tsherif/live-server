@@ -8,7 +8,6 @@ const fs = require('fs'),
 	url = require('url'),
 	http = require('http'),
 	send = require('send'),
-	es = require("event-stream"),
 	os = require('os'),
 	mime = require('mime'),
 	chokidar = require('chokidar');
@@ -36,9 +35,7 @@ function staticServer(root) {
 		if (req.method !== "GET" && req.method !== "HEAD") return next();
 		const pathname = url.parse(req.url).pathname;
 		const reqpath = pathname === "/" ?  "index.html" : pathname;
-		const x = path.extname(reqpath).toLocaleLowerCase();
-		const possibleExtensions = [ ".html", ".htm", ".xhtml", ".php", ".svg" ];
-		const isHTML = possibleExtensions.indexOf(x) > -1
+		const isHTML = mime.getType(reqpath) === "text/html";
 
 		function directory() {
 			const pathname = url.parse(req.originalUrl).pathname;
@@ -68,20 +65,6 @@ function staticServer(root) {
 }
 
 /**
- * Rewrite request URL and pass it back to the static handler.
- * @param staticHandler {function} Next handler
- * @param file {string} Path to the entry point file
- */
-function entryPoint(staticHandler, file) {
-	if (!file) return function(req, res, next) { next(); };
-
-	return function(req, res, next) {
-		req.url = "/" + file;
-		staticHandler(req, res, next);
-	};
-}
-
-/**
  * Start a live server with parameters given as an object
  * @param host {string} Address to bind to (default: 0.0.0.0)
  * @param port {number} Port number (default: 8080)
@@ -106,7 +89,6 @@ LiveServer.start = function(options) {
 	const watchPaths = options.watch || [root];
 	LiveServer.logLevel = options.logLevel === undefined ? 2 : options.logLevel;
 	const staticServerHandler = staticServer(root);
-	const wait = 100;
 	const poll = options.poll || false;
 
 	// Setup a web server
@@ -123,7 +105,6 @@ LiveServer.start = function(options) {
 	}
 
 	app.use(staticServerHandler) // Custom static server
-		.use(entryPoint(staticServerHandler))
 		.use(serveIndex(root, { icons: true }));
 
 
@@ -199,20 +180,6 @@ LiveServer.start = function(options) {
 		const ws = new WebSocket(request, socket, head);
 		ws.onopen = function() { ws.send('connected'); };
 
-		if (wait > 0) {
-			(function() {
-				const wssend = ws.send;
-				let waitTimeout;
-				ws.send = function() {
-					const args = arguments;
-					if (waitTimeout) clearTimeout(waitTimeout);
-					waitTimeout = setTimeout(function(){
-						wssend.apply(ws, args);
-					}, wait);
-				};
-			})();
-		}
-
 		ws.onclose = function() {
 			clients = clients.filter(function (x) {
 				return x !== ws;
@@ -230,9 +197,7 @@ LiveServer.start = function(options) {
 	if (options.ignore) {
 		ignored = ignored.concat(options.ignore);
 	}
-	if (options.ignorePattern) {
-		ignored.push(options.ignorePattern);
-	}
+
 	// Setup file watcher
 	LiveServer.watcher = chokidar.watch(watchPaths, {
 		usePolling: poll,
