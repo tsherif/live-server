@@ -27,7 +27,7 @@ function isNodeJSError(e) {
 }
 // Based on connect.static(), but streamlined and with added code injecter
 function staticServer(root) {
-    return function (req, res, next) {
+    return (req, res, next) => {
         var _a;
         if (req.method !== "GET" && req.method !== "HEAD") {
             return next();
@@ -103,20 +103,20 @@ const LiveServer = {
     watcher: null,
     logLevel: 2,
     start(options) {
-        options = options || {};
+        var _a, _b;
+        const { port = 8080, // 0 means random
+        poll = false } = options;
         const host = process.env.IP || '0.0.0.0';
-        const port = options.port !== undefined ? options.port : 8080; // 0 means random
         const root = options.root || process.cwd();
-        const watchPaths = options.watch || [root];
-        LiveServer.logLevel = options.logLevel === undefined ? 2 : options.logLevel;
+        const watchPaths = (_a = options.watch) !== null && _a !== void 0 ? _a : [root];
+        LiveServer.logLevel = (_b = options.logLevel) !== null && _b !== void 0 ? _b : 2;
         const staticServerHandler = staticServer(root);
-        const poll = options.poll || false;
         // Setup a web server
         const app = connect();
         // Add logger. Level 2 logs only errors
         if (LiveServer.logLevel === 2) {
             app.use(logger('dev', {
-                skip: function (_req, res) { return res.statusCode < 400; }
+                skip: (_req, res) => res.statusCode < 400
             }));
             // Level 2 or above logs all requests
         }
@@ -126,13 +126,12 @@ const LiveServer = {
         app.use(staticServerHandler) // Custom static server
             .use(serveIndex(root, { icons: true }));
         const server = http.createServer(app);
-        const protocol = "http";
         // Handle server startup errors
-        server.addListener('error', function (e) {
+        server.addListener('error', e => {
             if (isNodeJSError(e) && e.code === 'EADDRINUSE') {
-                const serveURL = protocol + '://' + host + ':' + port;
+                const serveURL = "http://" + host + ":" + port;
                 console.log('%s is already in use. Trying another port.'.yellow, serveURL);
-                setTimeout(function () {
+                setTimeout(() => {
                     server.listen(0, host);
                 }, 1000);
             }
@@ -142,7 +141,7 @@ const LiveServer = {
             }
         });
         // Handle successful server
-        server.addListener('listening', function ( /*e*/) {
+        server.addListener('listening', () => {
             LiveServer.server = server;
             const address = server.address();
             if (!address) {
@@ -151,23 +150,21 @@ const LiveServer = {
             }
             const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
             const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-            const serveURL = protocol + '://' + serveHost + ':' + address.port;
-            const openURL = protocol + '://' + openHost + ':' + address.port;
+            const serveURL = "http://" + serveHost + ':' + address.port;
+            const openURL = "http://" + openHost + ':' + address.port;
             let serveURLs = [serveURL];
             if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
                 const ifaces = os.networkInterfaces();
                 serveURLs = Object.values(ifaces)
                     // flatten address data, use only IPv4
-                    .reduce(function (data, addresses) {
-                    addresses.filter(function (addr) {
-                        return addr.family === "IPv4";
-                    }).forEach(function (addr) {
-                        data.push(addr);
-                    });
+                    .reduce((data, addresses) => {
+                    addresses
+                        .filter(addr => addr.family === "IPv4")
+                        .forEach(addr => data.push(addr));
                     return data;
                 }, [])
-                    .map(function (addr) {
-                    return protocol + "://" + addr.address + ":" + address.port;
+                    .map((addr) => {
+                    return "http://" + addr.address + ":" + address.port;
                 });
             }
             // Output
@@ -185,15 +182,16 @@ const LiveServer = {
         });
         // Setup server to listen at port
         server.listen(port, host);
+        // Setup WebSocket
         const websocketServer = new ws_1.WebSocketServer({
             server,
             clientTracking: true
         });
-        websocketServer.on("connection", ws => ws.send('connected'));
+        websocketServer.on("connection", ws => ws.send("connected"));
+        // Setup watcher
         let ignored = [
-            function (testPath) {
-                return testPath !== "." && /(^[.#]|(?:__|~)$)/.test(path.basename(testPath));
-            }
+            // Always ignore dotfiles (important e.g. because editor hidden temp files)
+            (testPath) => testPath !== "." && /(^[.#]|(?:__|~)$)/.test(path.basename(testPath))
         ];
         if (options.ignore) {
             ignored = ignored.concat(options.ignore);
@@ -208,7 +206,7 @@ const LiveServer = {
             if (LiveServer.logLevel >= 1) {
                 console.log("Change detected".cyan, changePath);
             }
-            websocketServer.clients.forEach((ws) => ws.send('reload'));
+            websocketServer.clients.forEach(ws => ws.send("reload"));
         }
         LiveServer.watcher
             .on("change", handleChange)
@@ -216,21 +214,19 @@ const LiveServer = {
             .on("unlink", handleChange)
             .on("addDir", handleChange)
             .on("unlinkDir", handleChange)
-            .on("ready", function () {
-            if (LiveServer.logLevel >= 1)
+            .on("ready", () => {
+            if (LiveServer.logLevel >= 1) {
                 console.log("Ready for changes".cyan);
+            }
         })
-            .on("error", function (err) {
-            console.log("ERROR:".red, err);
-        });
+            .on("error", err => console.log("ERROR:".red, err));
         return server;
     },
     shutdown() {
-        const watcher = LiveServer.watcher;
+        const { watcher, server } = LiveServer;
         if (watcher) {
             watcher.close();
         }
-        const server = LiveServer.server;
         if (server)
             server.close();
     }

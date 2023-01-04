@@ -14,14 +14,14 @@ import * as chokidar from 'chokidar';
 import 'colors';
 import { AddressInfo } from 'net';
 
-type IgnoreMatcher =string |RegExp | ((testString: string) => boolean);
+type IgnoreMatcher =string | RegExp | ((testString: string) => boolean);
 
 export interface LiveServerOptions {
-	host: string;
-	port: number;
-	logLevel: number;
-	poll: boolean;
-	root: string;
+	host?: string;
+	port?: number;
+	logLevel?: number;
+	poll?: boolean;
+	root?: string;
 	watch?: string[];
 	ignore?: IgnoreMatcher[]; 
 }
@@ -42,7 +42,7 @@ function isNodeJSError(e: any): e is NodeJS.ErrnoException {
 
 // Based on connect.static(), but streamlined and with added code injecter
 function staticServer(root: string) {
-	return function(req: connect.IncomingMessage, res: http.ServerResponse, next: connect.NextFunction) {
+	return (req: connect.IncomingMessage, res: http.ServerResponse, next: connect.NextFunction) => {
 		if (req.method !== "GET" && req.method !== "HEAD") {
 			return next();
 		}
@@ -118,15 +118,7 @@ function staticServer(root: string) {
  * @param root {string} Path to root directory (default: cwd)
  * @param watch {array} Paths to exclusively watch for changes
  * @param ignore {array} Paths to ignore when watching files for changes
- * @param ignorePattern {regexp} Ignore files by RegExp
- * @param noCssInject Don't inject CSS changes, just reload as with any other file change
- * @param open {(string|string[])} Subpath(s) to open in browser, use false to suppress launch (default: server root)
- * @param mount {array} Mount directories onto a route, e.g. [['/components', './node_modules']].
  * @param logLevel {number} 0 = errors only, 1 = some, 2 = lots
- * @param file {string} Path to the entry point file
- * @param wait {number} Server will wait for all changes, before reloading
- * @param htpasswd {string} Path to htpasswd file to enable HTTP Basic authentication
- * @param middleware {array} Append middleware to stack, e.g. [function(req, res, next) { next(); }].
  */
 
 interface LiveServerInterface {
@@ -142,14 +134,15 @@ const LiveServer: LiveServerInterface = {
 	watcher: null,
 	logLevel: 2,
 	start(options: LiveServerOptions) {
-		options = options || {};
+		const {
+			port = 8080, // 0 means random
+			poll = false
+		} = options;
 		const host = process.env.IP || '0.0.0.0';
-		const port = options.port !== undefined ? options.port : 8080; // 0 means random
 		const root = options.root || process.cwd();
-		const watchPaths = options.watch || [root];
-		LiveServer.logLevel = options.logLevel === undefined ? 2 : options.logLevel;
+		const watchPaths = options.watch ?? [root];
+		LiveServer.logLevel = options.logLevel ?? 2;
 		const staticServerHandler = staticServer(root);
-		const poll = options.poll || false;
 	
 		// Setup a web server
 		const app = connect();
@@ -157,7 +150,7 @@ const LiveServer: LiveServerInterface = {
 		// Add logger. Level 2 logs only errors
 		if (LiveServer.logLevel === 2) {
 			app.use(logger('dev', {
-				skip: function (_req, res) { return res.statusCode < 400; }
+				skip: (_req, res) => res.statusCode < 400
 			}));
 		// Level 2 or above logs all requests
 		} else if (LiveServer.logLevel > 2) {
@@ -167,16 +160,14 @@ const LiveServer: LiveServerInterface = {
 		app.use(staticServerHandler) // Custom static server
 			.use(serveIndex(root, { icons: true }) as connect.NextHandleFunction);
 	
-	
 		const server = http.createServer(app);
-		const protocol = "http";
 	
 		// Handle server startup errors
-		server.addListener('error', function(e) {
+		server.addListener('error', e => {
 			if (isNodeJSError(e) && e.code === 'EADDRINUSE') {
-				const serveURL = protocol + '://' + host + ':' + port;
+				const serveURL = "http://" + host + ":" + port;
 				console.log('%s is already in use. Trying another port.'.yellow, serveURL);
-				setTimeout(function() {
+				setTimeout( () => {
 					server.listen(0, host);
 				}, 1000);
 			} else {
@@ -186,7 +177,7 @@ const LiveServer: LiveServerInterface = {
 		});
 	
 		// Handle successful server
-		server.addListener('listening', function(/*e*/) {
+		server.addListener('listening', () => {
 			LiveServer.server = server;
 	
 			const address = server.address() as AddressInfo | null;
@@ -199,8 +190,8 @@ const LiveServer: LiveServerInterface = {
 			const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
 			const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
 	
-			const serveURL = protocol + '://' + serveHost + ':' + address.port;
-			const openURL = protocol + '://' + openHost + ':' + address.port;
+			const serveURL = "http://" + serveHost + ':' + address.port;
+			const openURL = "http://" + openHost + ':' + address.port;
 	
 			let serveURLs = [ serveURL ];
 			if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
@@ -208,16 +199,14 @@ const LiveServer: LiveServerInterface = {
 				
 				serveURLs = (Object.values(ifaces) as os.NetworkInterfaceInfo[][])
 					// flatten address data, use only IPv4
-					.reduce(function(data, addresses) {
-						addresses.filter(function(addr) {
-							return addr.family === "IPv4";
-						}).forEach(function(addr) {
-							data.push(addr);
-						});
+					.reduce((data, addresses) => {
+						addresses
+							.filter(addr => addr.family === "IPv4")
+							.forEach(addr => data.push(addr));
 						return data;
 					}, [])
-					.map(function(addr) {
-						return protocol + "://" + addr.address + ":" + address.port;
+					.map((addr) => {
+						return "http://" + addr.address + ":" + address.port;
 					});
 			}
 	
@@ -238,17 +227,18 @@ const LiveServer: LiveServerInterface = {
 		// Setup server to listen at port
 		server.listen(port, host);
 
+		// Setup WebSocket
 		const websocketServer = new WebSocketServer({ 
 			server,
 			clientTracking: true 
 		});
 
-		websocketServer.on("connection", ws => ws.send('connected'));
+		websocketServer.on("connection", ws => ws.send("connected"));
 	
+		// Setup watcher
 		let ignored: IgnoreMatcher[] = [
-			function(testPath: string) { // Always ignore dotfiles (important e.g. because editor hidden temp files)
-				return testPath !== "." && /(^[.#]|(?:__|~)$)/.test(path.basename(testPath));
-			}
+			// Always ignore dotfiles (important e.g. because editor hidden temp files)
+			(testPath: string) => testPath !== "." && /(^[.#]|(?:__|~)$)/.test(path.basename(testPath))
 		];
 		if (options.ignore) {
 			ignored = ignored.concat(options.ignore);
@@ -260,36 +250,37 @@ const LiveServer: LiveServerInterface = {
 			ignored: ignored,
 			ignoreInitial: true
 		});
+
 		function handleChange(changePath: string) {
 			if (LiveServer.logLevel >= 1) {
 				console.log("Change detected".cyan, changePath); 
 			}
 
-			websocketServer.clients.forEach((ws) => ws.send('reload'));
+			websocketServer.clients.forEach(ws => ws.send("reload"));
 		}
+
 		LiveServer.watcher
 			.on("change", handleChange)
 			.on("add", handleChange)
 			.on("unlink", handleChange)
 			.on("addDir", handleChange)
 			.on("unlinkDir", handleChange)
-			.on("ready", function () {
-				if (LiveServer.logLevel >= 1)
+			.on("ready", () => {
+				if (LiveServer.logLevel >= 1) {
 					console.log("Ready for changes".cyan);
+				}
 			})
-			.on("error", function (err) {
-				console.log("ERROR:".red, err);
-			});
+			.on("error", err => console.log("ERROR:".red, err));
 	
 		return server;
 	},
 
 	shutdown() {
-		const watcher = LiveServer.watcher;
+		const {watcher, server} = LiveServer;
+
 		if (watcher) {
 			watcher.close();
 		}
-		const server = LiveServer.server;
 		if (server)
 			server.close();
 	}
