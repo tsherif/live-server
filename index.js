@@ -128,15 +128,9 @@ const LiveServer = {
         });
         // Handle successful server
         server.addListener("listening", () => {
-            LiveServer.server = server;
-            const address = server.address();
-            if (!address) {
-                console.log("Error: failed to retreive server address".red);
-                return;
-            }
             // Output
             if (LiveServer.logLevel >= 1) {
-                console.log(("Serving \"%s\" on port %s").green, root, address.port);
+                console.log(("Serving \"%s\" on port %s").green, root, port);
             }
         });
         // Setup server to listen at port

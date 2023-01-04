@@ -11,7 +11,6 @@ import * as send from "send";
 import * as mime from "mime";
 import * as chokidar from "chokidar";
 import "colors";
-import type { AddressInfo } from "net";
 
 type IgnoreMatcher =string | RegExp | ((testString: string) => boolean);
 
@@ -162,21 +161,11 @@ const LiveServer: LiveServerInterface = {
 		});
 	
 		// Handle successful server
-		server.addListener("listening", () => {
-			LiveServer.server = server;
-	
-			const address = server.address() as AddressInfo | null;
-
-			if (!address) {
-				console.log("Error: failed to retreive server address".red);
-				return;
-			}
-	
+		server.addListener("listening", () => {	
 			// Output
 			if (LiveServer.logLevel >= 1) {
-				console.log(("Serving \"%s\" on port %s").green, root, address.port)
+				console.log(("Serving \"%s\" on port %s").green, root, port)
 			}
-	
 		});
 	
 		// Setup server to listen at port
