@@ -3,17 +3,10 @@ const path = require("path");
 const fs = require("fs");
 const liveServer = require("./index");
 
-interface Options {
-	host: string;
-	port: number;
-	logLevel: number;
-	poll: boolean;
-	root: string;
-	watch?: string[];
-	ignore?: string[]; 
-}
+import type { LiveServerOptions } from "./index";
 
-const opts: Options = {
+
+const opts: LiveServerOptions = {
 	host: process.env.IP ?? "0.0.0.0",
 	port: 8080,
 	logLevel: 2,
