@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 "use strict";
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
 const fs = require("fs");
 const liveServer = require("./index");
 const opts = {
-    host: (_a = process.env.IP) !== null && _a !== void 0 ? _a : "0.0.0.0",
     port: 8080,
     logLevel: 2,
     poll: false,

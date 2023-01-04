@@ -8,7 +8,6 @@ import * as path from "path";
 import * as url from "url";
 import * as http from "http";
 import * as send from "send";
-import * as os from "os";
 import * as mime from "mime";
 import * as chokidar from "chokidar";
 import "colors";
@@ -33,10 +32,6 @@ function escape(html: string){
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;");
-}
-
-function isNodeJSError(e: any): e is NodeJS.ErrnoException {
-	return e instanceof Error;
 }
 
 // Based on connect.static(), but streamlined and with added code injecter
@@ -137,7 +132,6 @@ const LiveServer: LiveServerInterface = {
 			port = 8080, // 0 means random
 			poll = false
 		} = options;
-		const host = process.env.IP || "0.0.0.0";
 		const root = options.root || process.cwd();
 		const watchPaths = options.watch ?? [root];
 		LiveServer.logLevel = options.logLevel ?? 2;
@@ -163,16 +157,8 @@ const LiveServer: LiveServerInterface = {
 	
 		// Handle server startup errors
 		server.addListener("error", e => {
-			if (isNodeJSError(e) && e.code === "EADDRINUSE") {
-				const serveURL = "http://" + host + ":" + port;
-				console.log("%s is already in use. Trying another port.".yellow, serveURL);
-				setTimeout( () => {
-					server.listen(0, host);
-				}, 1000);
-			} else {
-				console.error(e.toString().red);
-				LiveServer.shutdown();
-			}
+			console.error(e.toString().red);
+			LiveServer.shutdown();
 		});
 	
 		// Handle successful server
@@ -185,46 +171,16 @@ const LiveServer: LiveServerInterface = {
 				console.log("Error: failed to retreive server address".red);
 				return;
 			}
-
-			const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
-			const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-	
-			const serveURL = "http://" + serveHost + ":" + address.port;
-			const openURL = "http://" + openHost + ":" + address.port;
-	
-			let serveURLs = [ serveURL ];
-			if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
-				const ifaces = os.networkInterfaces();
-				
-				serveURLs = (Object.values(ifaces) as os.NetworkInterfaceInfo[][])
-					// flatten address data, use only IPv4
-					.reduce((data, addresses) => {
-						addresses
-							.filter(addr => addr.family === "IPv4")
-							.forEach(addr => data.push(addr));
-						return data;
-					}, [])
-					.map((addr) => {
-						return "http://" + addr.address + ":" + address.port;
-					});
-			}
 	
 			// Output
 			if (LiveServer.logLevel >= 1) {
-				if (serveURL === openURL)
-					if (serveURLs.length === 1) {
-						console.log(("Serving \"%s\" at %s").green, root, serveURLs[0]);
-					} else {
-						console.log(("Serving \"%s\" at\n\t%s").green, root, serveURLs.join("\n\t"));
-					}
-				else
-					console.log(("Serving \"%s\" at %s (%s)").green, root, openURL, serveURL);
+				console.log(("Serving \"%s\" on port %s").green, root, address.port)
 			}
 	
 		});
 	
 		// Setup server to listen at port
-		server.listen(port, host);
+		server.listen(port);
 
 		// Setup WebSocket
 		const websocketServer = new WebSocketServer({ 

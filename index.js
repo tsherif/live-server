@@ -10,7 +10,6 @@ const path = require("path");
 const url = require("url");
 const http = require("http");
 const send = require("send");
-const os = require("os");
 const mime = require("mime");
 const chokidar = require("chokidar");
 require("colors");
@@ -21,9 +20,6 @@ function escape(html) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
-}
-function isNodeJSError(e) {
-    return e instanceof Error;
 }
 // Based on connect.static(), but streamlined and with added code injecter
 function staticServer(root) {
@@ -106,7 +102,6 @@ const LiveServer = {
         var _a, _b;
         const { port = 8080, // 0 means random
         poll = false } = options;
-        const host = process.env.IP || "0.0.0.0";
         const root = options.root || process.cwd();
         const watchPaths = (_a = options.watch) !== null && _a !== void 0 ? _a : [root];
         LiveServer.logLevel = (_b = options.logLevel) !== null && _b !== void 0 ? _b : 2;
@@ -128,17 +123,8 @@ const LiveServer = {
         const server = http.createServer(app);
         // Handle server startup errors
         server.addListener("error", e => {
-            if (isNodeJSError(e) && e.code === "EADDRINUSE") {
-                const serveURL = "http://" + host + ":" + port;
-                console.log("%s is already in use. Trying another port.".yellow, serveURL);
-                setTimeout(() => {
-                    server.listen(0, host);
-                }, 1000);
-            }
-            else {
-                console.error(e.toString().red);
-                LiveServer.shutdown();
-            }
+            console.error(e.toString().red);
+            LiveServer.shutdown();
         });
         // Handle successful server
         server.addListener("listening", () => {
@@ -148,40 +134,13 @@ const LiveServer = {
                 console.log("Error: failed to retreive server address".red);
                 return;
             }
-            const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
-            const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-            const serveURL = "http://" + serveHost + ":" + address.port;
-            const openURL = "http://" + openHost + ":" + address.port;
-            let serveURLs = [serveURL];
-            if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
-                const ifaces = os.networkInterfaces();
-                serveURLs = Object.values(ifaces)
-                    // flatten address data, use only IPv4
-                    .reduce((data, addresses) => {
-                    addresses
-                        .filter(addr => addr.family === "IPv4")
-                        .forEach(addr => data.push(addr));
-                    return data;
-                }, [])
-                    .map((addr) => {
-                    return "http://" + addr.address + ":" + address.port;
-                });
-            }
             // Output
             if (LiveServer.logLevel >= 1) {
-                if (serveURL === openURL)
-                    if (serveURLs.length === 1) {
-                        console.log(("Serving \"%s\" at %s").green, root, serveURLs[0]);
-                    }
-                    else {
-                        console.log(("Serving \"%s\" at\n\t%s").green, root, serveURLs.join("\n\t"));
-                    }
-                else
-                    console.log(("Serving \"%s\" at %s (%s)").green, root, openURL, serveURL);
+                console.log(("Serving \"%s\" on port %s").green, root, address.port);
             }
         });
         // Setup server to listen at port
-        server.listen(port, host);
+        server.listen(port);
         // Setup WebSocket
         const websocketServer = new ws_1.WebSocketServer({
             server,
