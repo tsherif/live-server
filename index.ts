@@ -106,7 +106,6 @@ function staticServer(root: string) {
 
 /**
  * Start a live server with parameters given as an object
- * @param host {string} Address to bind to (default: 0.0.0.0)
  * @param port {number} Port number (default: 8080)
  * @param root {string} Path to root directory (default: cwd)
  * @param watch {array} Paths to exclusively watch for changes
