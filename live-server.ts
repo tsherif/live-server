@@ -7,7 +7,6 @@ import type { LiveServerOptions } from "./index";
 
 
 const opts: LiveServerOptions = {
-	host: process.env.IP ?? "0.0.0.0",
 	port: 8080,
 	logLevel: 2,
 	poll: false,

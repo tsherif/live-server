@@ -17,7 +17,6 @@ import type { AddressInfo } from "net";
 type IgnoreMatcher =string | RegExp | ((testString: string) => boolean);
 
 export interface LiveServerOptions {
-	host?: string;
 	port?: number;
 	logLevel?: number;
 	poll?: boolean;
