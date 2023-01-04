@@ -17,10 +17,10 @@ require("colors");
 const INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "utf8");
 function escape(html) {
     return String(html)
-        .replace(/&(?!\w+;)/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/&(?!\w+;)/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 function isNodeJSError(e) {
     return e instanceof Error;
@@ -50,8 +50,8 @@ function staticServer(root) {
                 }
                 else {
                     res.statusCode = 301;
-                    res.setHeader('Location', reqpath + '/');
-                    res.end('Redirecting to ' + escape(reqpath) + '/');
+                    res.setHeader("Location", reqpath + "/");
+                    res.end("Redirecting to " + escape(reqpath) + "/");
                     return;
                 }
             }
@@ -91,8 +91,8 @@ function staticServer(root) {
                 var _a, _b;
                 const pathname = (_b = url.parse((_a = req.originalUrl) !== null && _a !== void 0 ? _a : "").pathname) !== null && _b !== void 0 ? _b : "";
                 res.statusCode = 301;
-                res.setHeader('Location', pathname + '/');
-                res.end('Redirecting to ' + escape(pathname) + '/');
+                res.setHeader("Location", pathname + "/");
+                res.end("Redirecting to " + escape(pathname) + "/");
             })
                 .pipe(res);
         }
@@ -106,7 +106,7 @@ const LiveServer = {
         var _a, _b;
         const { port = 8080, // 0 means random
         poll = false } = options;
-        const host = process.env.IP || '0.0.0.0';
+        const host = process.env.IP || "0.0.0.0";
         const root = options.root || process.cwd();
         const watchPaths = (_a = options.watch) !== null && _a !== void 0 ? _a : [root];
         LiveServer.logLevel = (_b = options.logLevel) !== null && _b !== void 0 ? _b : 2;
@@ -115,22 +115,22 @@ const LiveServer = {
         const app = connect();
         // Add logger. Level 2 logs only errors
         if (LiveServer.logLevel === 2) {
-            app.use(logger('dev', {
+            app.use(logger("dev", {
                 skip: (_req, res) => res.statusCode < 400
             }));
             // Level 2 or above logs all requests
         }
         else if (LiveServer.logLevel > 2) {
-            app.use(logger('dev'));
+            app.use(logger("dev"));
         }
         app.use(staticServerHandler) // Custom static server
             .use(serveIndex(root, { icons: true }));
         const server = http.createServer(app);
         // Handle server startup errors
-        server.addListener('error', e => {
-            if (isNodeJSError(e) && e.code === 'EADDRINUSE') {
+        server.addListener("error", e => {
+            if (isNodeJSError(e) && e.code === "EADDRINUSE") {
                 const serveURL = "http://" + host + ":" + port;
-                console.log('%s is already in use. Trying another port.'.yellow, serveURL);
+                console.log("%s is already in use. Trying another port.".yellow, serveURL);
                 setTimeout(() => {
                     server.listen(0, host);
                 }, 1000);
@@ -141,7 +141,7 @@ const LiveServer = {
             }
         });
         // Handle successful server
-        server.addListener('listening', () => {
+        server.addListener("listening", () => {
             LiveServer.server = server;
             const address = server.address();
             if (!address) {
@@ -150,8 +150,8 @@ const LiveServer = {
             }
             const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
             const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-            const serveURL = "http://" + serveHost + ':' + address.port;
-            const openURL = "http://" + openHost + ':' + address.port;
+            const serveURL = "http://" + serveHost + ":" + address.port;
+            const openURL = "http://" + openHost + ":" + address.port;
             let serveURLs = [serveURL];
             if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
                 const ifaces = os.networkInterfaces();

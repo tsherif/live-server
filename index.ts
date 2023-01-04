@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-import * as fs from 'fs';
-import * as connect from 'connect';
-import * as serveIndex from 'serve-index';
-import * as logger from 'morgan';
-import { WebSocketServer } from 'ws';
-import * as path from 'path';
-import * as url from 'url';
-import * as http from 'http';
-import * as send from 'send';
-import * as os from 'os';
-import * as mime from 'mime';
-import * as chokidar from 'chokidar';
-import 'colors';
-import { AddressInfo } from 'net';
+import * as fs from "fs";
+import * as connect from "connect";
+import * as serveIndex from "serve-index";
+import * as logger from "morgan";
+import { WebSocketServer } from "ws";
+import * as path from "path";
+import * as url from "url";
+import * as http from "http";
+import * as send from "send";
+import * as os from "os";
+import * as mime from "mime";
+import * as chokidar from "chokidar";
+import "colors";
+import type { AddressInfo } from "net";
 
 type IgnoreMatcher =string | RegExp | ((testString: string) => boolean);
 
@@ -30,10 +30,10 @@ const INJECTED_CODE = fs.readFileSync(path.join(__dirname, "injected.html"), "ut
 
 function escape(html: string){
 	return String(html)
-		.replace(/&(?!\w+;)/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;');
+		.replace(/&(?!\w+;)/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
 }
 
 function isNodeJSError(e: any): e is NodeJS.ErrnoException {
@@ -64,8 +64,8 @@ function staticServer(root: string) {
 					}
 				} else {
 					res.statusCode = 301;
-					res.setHeader('Location', reqpath + '/');
-					res.end('Redirecting to ' + escape(reqpath) + '/');
+					res.setHeader("Location", reqpath + "/");
+					res.end("Redirecting to " + escape(reqpath) + "/");
 					return;
 				}
 				
@@ -103,8 +103,8 @@ function staticServer(root: string) {
 			.on("directory", () => {
 				const pathname = url.parse(req.originalUrl ?? "").pathname ?? "";
 				res.statusCode = 301;
-				res.setHeader('Location', pathname + '/');
-				res.end('Redirecting to ' + escape(pathname) + '/');
+				res.setHeader("Location", pathname + "/");
+				res.end("Redirecting to " + escape(pathname) + "/");
 			})
 			.pipe(res);
 		}
@@ -138,7 +138,7 @@ const LiveServer: LiveServerInterface = {
 			port = 8080, // 0 means random
 			poll = false
 		} = options;
-		const host = process.env.IP || '0.0.0.0';
+		const host = process.env.IP || "0.0.0.0";
 		const root = options.root || process.cwd();
 		const watchPaths = options.watch ?? [root];
 		LiveServer.logLevel = options.logLevel ?? 2;
@@ -149,12 +149,12 @@ const LiveServer: LiveServerInterface = {
 	
 		// Add logger. Level 2 logs only errors
 		if (LiveServer.logLevel === 2) {
-			app.use(logger('dev', {
+			app.use(logger("dev", {
 				skip: (_req, res) => res.statusCode < 400
 			}));
 		// Level 2 or above logs all requests
 		} else if (LiveServer.logLevel > 2) {
-			app.use(logger('dev'));
+			app.use(logger("dev"));
 		}
 	
 		app.use(staticServerHandler) // Custom static server
@@ -163,10 +163,10 @@ const LiveServer: LiveServerInterface = {
 		const server = http.createServer(app);
 	
 		// Handle server startup errors
-		server.addListener('error', e => {
-			if (isNodeJSError(e) && e.code === 'EADDRINUSE') {
+		server.addListener("error", e => {
+			if (isNodeJSError(e) && e.code === "EADDRINUSE") {
 				const serveURL = "http://" + host + ":" + port;
-				console.log('%s is already in use. Trying another port.'.yellow, serveURL);
+				console.log("%s is already in use. Trying another port.".yellow, serveURL);
 				setTimeout( () => {
 					server.listen(0, host);
 				}, 1000);
@@ -177,7 +177,7 @@ const LiveServer: LiveServerInterface = {
 		});
 	
 		// Handle successful server
-		server.addListener('listening', () => {
+		server.addListener("listening", () => {
 			LiveServer.server = server;
 	
 			const address = server.address() as AddressInfo | null;
@@ -190,8 +190,8 @@ const LiveServer: LiveServerInterface = {
 			const serveHost = address.address === "0.0.0.0" ? "127.0.0.1" : address.address;
 			const openHost = host === "0.0.0.0" ? "127.0.0.1" : host;
 	
-			const serveURL = "http://" + serveHost + ':' + address.port;
-			const openURL = "http://" + openHost + ':' + address.port;
+			const serveURL = "http://" + serveHost + ":" + address.port;
+			const openURL = "http://" + openHost + ":" + address.port;
 	
 			let serveURLs = [ serveURL ];
 			if (LiveServer.logLevel > 2 && address.address === "0.0.0.0") {
