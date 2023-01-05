@@ -10,13 +10,11 @@
     "http",
     "cli"
   ],
-  "author": "Tapio Vierros",
+  "author": "Tarek Sherif",
   "dependencies": {
     "chokidar": "^3.5.3",
     "colors": "^1.4.0",
     "connect": "^3.7.0",
-    "event-stream": "^4.0.1",
-    "faye-websocket": "^0.11.4",
     "mime": "^3.0.0",
     "morgan": "^1.10.0",
     "send": "^0.18.0",

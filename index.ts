@@ -121,7 +121,7 @@ interface LiveServerInterface {
 	shutdown: () => void;
 }
 
-const LiveServer: LiveServerInterface = {
+export const LiveServer: LiveServerInterface = {
 	server: null,
 	watcher: null,
 	logLevel: 2,
@@ -134,6 +134,8 @@ const LiveServer: LiveServerInterface = {
 		const watchPaths = options.watch ?? [root];
 		LiveServer.logLevel = options.logLevel ?? 2;
 		const staticServerHandler = staticServer(root);
+
+		console.log(root);
 	
 		// Setup a web server
 		const app = connect();
@@ -228,5 +230,3 @@ const LiveServer: LiveServerInterface = {
 			server.close();
 	}
 };
-
-module.exports = LiveServer;

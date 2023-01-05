@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.LiveServer = void 0;
 const fs = require("fs");
 const connect = require("connect");
 const serveIndex = require("serve-index");
@@ -94,7 +95,7 @@ function staticServer(root) {
         }
     };
 }
-const LiveServer = {
+exports.LiveServer = {
     server: null,
     watcher: null,
     logLevel: 2,
@@ -104,18 +105,19 @@ const LiveServer = {
         poll = false } = options;
         const root = options.root || process.cwd();
         const watchPaths = (_a = options.watch) !== null && _a !== void 0 ? _a : [root];
-        LiveServer.logLevel = (_b = options.logLevel) !== null && _b !== void 0 ? _b : 2;
+        exports.LiveServer.logLevel = (_b = options.logLevel) !== null && _b !== void 0 ? _b : 2;
         const staticServerHandler = staticServer(root);
+        console.log(root);
         // Setup a web server
         const app = connect();
         // Add logger. Level 2 logs only errors
-        if (LiveServer.logLevel === 2) {
+        if (exports.LiveServer.logLevel === 2) {
             app.use(logger("dev", {
                 skip: (_req, res) => res.statusCode < 400
             }));
             // Level 2 or above logs all requests
         }
-        else if (LiveServer.logLevel > 2) {
+        else if (exports.LiveServer.logLevel > 2) {
             app.use(logger("dev"));
         }
         app.use(staticServerHandler) // Custom static server
@@ -124,12 +126,12 @@ const LiveServer = {
         // Handle server startup errors
         server.addListener("error", e => {
             console.error(e.toString().red);
-            LiveServer.shutdown();
+            exports.LiveServer.shutdown();
         });
         // Handle successful server
         server.addListener("listening", () => {
             // Output
-            if (LiveServer.logLevel >= 1) {
+            if (exports.LiveServer.logLevel >= 1) {
                 console.log(("Serving \"%s\" on port %s").green, root, port);
             }
         });
@@ -150,25 +152,25 @@ const LiveServer = {
             ignored = ignored.concat(options.ignore);
         }
         // Setup file watcher
-        LiveServer.watcher = chokidar.watch(watchPaths, {
+        exports.LiveServer.watcher = chokidar.watch(watchPaths, {
             usePolling: poll,
             ignored: ignored,
             ignoreInitial: true
         });
         function handleChange(changePath) {
-            if (LiveServer.logLevel >= 1) {
+            if (exports.LiveServer.logLevel >= 1) {
                 console.log("Change detected".cyan, changePath);
             }
             websocketServer.clients.forEach(ws => ws.send("reload"));
         }
-        LiveServer.watcher
+        exports.LiveServer.watcher
             .on("change", handleChange)
             .on("add", handleChange)
             .on("unlink", handleChange)
             .on("addDir", handleChange)
             .on("unlinkDir", handleChange)
             .on("ready", () => {
-            if (LiveServer.logLevel >= 1) {
+            if (exports.LiveServer.logLevel >= 1) {
                 console.log("Ready for changes".cyan);
             }
         })
@@ -176,7 +178,7 @@ const LiveServer = {
         return server;
     },
     shutdown() {
-        const { watcher, server } = LiveServer;
+        const { watcher, server } = exports.LiveServer;
         if (watcher) {
             watcher.close();
         }
@@ -184,4 +186,3 @@ const LiveServer = {
             server.close();
     }
 };
-module.exports = LiveServer;

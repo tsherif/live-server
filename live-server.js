@@ -2,20 +2,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
-const fs = require("fs");
-const liveServer = require("./index");
+const index_1 = require("./index");
 const opts = {
     port: 8080,
     logLevel: 2,
     poll: false,
-    root: process.argv[2] || ""
 };
-const homeDir = process.env[(process.platform === "win32") ? "USERPROFILE" : "HOME"];
-const configPath = path.join(homeDir, ".live-server.json");
-if (fs.existsSync(configPath)) {
-    const userConfig = fs.readFileSync(configPath, "utf8");
-    Object.assign(opts, JSON.parse(userConfig));
-}
+let ignorePaths = [];
 for (let i = process.argv.length - 1; i >= 2; --i) {
     const arg = process.argv[i];
     if (arg.indexOf("--port=") > -1) {
@@ -33,7 +26,7 @@ for (let i = process.argv.length - 1; i >= 2; --i) {
     }
     else if (arg.indexOf("--ignore=") > -1) {
         // Will be modified later when cwd is known
-        opts.ignore = arg.substring(9).split(",");
+        ignorePaths = arg.substring(9).split(",");
         process.argv.splice(i, 1);
     }
     else if (arg === "--quiet" || arg === "-q") {
@@ -54,20 +47,16 @@ for (let i = process.argv.length - 1; i >= 2; --i) {
         process.argv.splice(i, 1);
     }
     else if (arg === "--help" || arg === "-h") {
-        console.log("Usage: live-server [-v|--version] [-h|--help] [-q|--quiet] [--port=PORT] [--host=HOST] [--open=PATH] [--no-browser] [--browser=BROWSER] [--ignore=PATH] [--ignorePattern=RGXP] [--no-css-inject] [--entry-file=PATH] [--spa] [--mount=ROUTE:PATH] [--wait=MILLISECONDS] [--htpasswd=PATH] [--cors] [--https=PATH] [--https-module=MODULE_NAME] [--proxy=PATH] [--poll] [PATH]");
+        console.log("Usage: live-server [-v|--version] [-h|--help] [-q|--quiet] [--port=PORT] [--ignore=PATH] [--poll] [PATH]");
         process.exit();
     }
 }
 // Patch paths
 const dir = opts.root = process.argv[2] || "";
 if (opts.watch) {
-    opts.watch = opts.watch.map(function (relativePath) {
-        return path.join(dir, relativePath);
-    });
+    opts.watch = opts.watch.map((relativePath) => path.join(dir, relativePath));
 }
 if (opts.ignore) {
-    opts.ignore = opts.ignore.map(function (relativePath) {
-        return path.join(dir, relativePath);
-    });
+    opts.ignore = ignorePaths.map((relativePath) => path.join(dir, relativePath));
 }
-liveServer.start(opts);
+index_1.LiveServer.start(opts);
