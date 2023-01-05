@@ -107,7 +107,6 @@ exports.LiveServer = {
         const watchPaths = (_a = options.watch) !== null && _a !== void 0 ? _a : [root];
         exports.LiveServer.logLevel = (_b = options.logLevel) !== null && _b !== void 0 ? _b : 2;
         const staticServerHandler = staticServer(root);
-        console.log(root);
         // Setup a web server
         const app = connect();
         // Add logger. Level 2 logs only errors
@@ -182,7 +181,8 @@ exports.LiveServer = {
         if (watcher) {
             watcher.close();
         }
-        if (server)
+        if (server) {
             server.close();
+        }
     }
 };

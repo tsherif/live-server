@@ -2,11 +2,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
+const fs = require("fs");
 const index_1 = require("./index");
 const opts = {
     port: 8080,
     logLevel: 2,
-    poll: false,
+    poll: false
 };
 let ignorePaths = [];
 for (let i = process.argv.length - 1; i >= 2; --i) {
@@ -38,7 +39,7 @@ for (let i = process.argv.length - 1; i >= 2; --i) {
         process.argv.splice(i, 1);
     }
     else if (arg === "--version" || arg === "-v") {
-        const packageJson = require("./package.json");
+        const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "./package.json"), "utf8"));
         console.log(packageJson.name, packageJson.version);
         process.exit();
     }
